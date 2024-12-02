@@ -1,0 +1,4 @@
+MSTR
+NVDA
+GOOG
+TQQQ
