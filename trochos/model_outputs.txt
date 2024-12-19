@@ -1,0 +1,5 @@
+Test Accuracy: 0.39952 with params: {'learning_rate': 0.1, 'window_size': 10, 'depth': 7, 'num_iter': 10}
+Test Accuracy: 0.43798 with params: {'learning_rate': 0.01, 'window_size': 10, 'depth': 7, 'num_iter': 1000}
+Test Accuracy: 0.48798 with params: {'learning_rate': 0.01, 'window_size': 10, 'depth': 15, 'num_iter': 1000}
+Test Accuracy: 0.46923 with params: {'learning_rate': 0.01, 'window_size': 12, 'depth': 15, 'num_iter': 1000}
+Test Accuracy: 0.47548 with params: {'learning_rate': 0.01, 'window_size': 12, 'depth': 17, 'num_iter': 1500}Test Accuracy: 0.48558 with params: {'learning_rate': 0.01, 'window_size': 7, 'depth': 17, 'num_iter': 1500}

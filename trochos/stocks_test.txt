@@ -1,0 +1,4 @@
+COST
+GOOG
+MSTR
+NVDA
