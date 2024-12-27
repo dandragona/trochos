@@ -10,6 +10,7 @@ import tensorflow as tf
 from xgboost import XGBClassifier, DMatrix
 import xgboost as xgb
 from collections import Counter
+from sklearn.preprocessing import MinMaxScaler
 
 
 
@@ -19,7 +20,8 @@ class Stonks:
         self.model = None
     
     def load(self):
-        rawDF = pd.read_parquet('ml/historical_data.parquet')
+        rawDF = pd.read_parquet(f'ml/historical_data{"" if self.params['prod'] else "_single"}.parquet')
+        print("Loaded:\n", rawDF.head())
         self.df = pre_process(rawDF,self.params['window_size'])
 
     def train_nn(self):        
@@ -105,8 +107,8 @@ class Stonks:
 
     def train_xgb(self):
         # Shuffle data so there is no date correlation.
-        self.df = self.df.sample(frac=1, random_state=42).reset_index(drop=True)
-
+        if self.params['shuffle']:
+            self.df = self.df.sample(frac=1, random_state=42).reset_index(drop=True)
         # Map the classes to integers
         class_map = {
             'large_negative': 0,
@@ -117,9 +119,11 @@ class Stonks:
         self.df['class_int'] = self.df['return_class'].map(class_map)
 
 
-        # Define your features (X) and target (y)
-        # Exclude 'return_class' and 'class_int' from features
-        feature_cols = [c for c in self.df.columns if c not in ['return_class', 'class_int', '7d_future_return', 'future_close']]
+        # Scale the features
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+        feature_cols = [c for c in self.df.columns if c not in ['return_class', 'class_int', '5d_future_return', 'future_close']]
+        self.df[feature_cols] = scaler.fit_transform(self.df[feature_cols])
+
 
         X = self.df[feature_cols]
         y = self.df['class_int']
@@ -180,8 +184,8 @@ class Stonks:
         # Evaluate accuracy
         acc = accuracy_score(y_test, y_pred)
         with open('model_outputs.txt', 'a') as file:
-            file.write(f"Test Accuracy: {acc:.5f} with params: {self.params}\n")
-        print("Test Accuracy:", acc, "with params: ", self.params)
+            file.write(f"Test Accuracy: {acc:.5f}| Params: {self.params} | Stopped @ {bst.best_iteration}\n")
+        print("Test Accuracy:", acc, "with params: ", self.params, "stopped at: ", bst.best_iteration)
 
     def train(self):
         #------------------------------------------------------------
@@ -257,24 +261,24 @@ def pre_process(df, window_size=15):
     df.index.name = 'Date'
     df = df.sort_values(by=['Symbol', 'Date'])
 
-    future_horizon = 7
+    future_horizon = 5
 
     def compute_future_return_per_symbol(x):
         x['future_close'] = x['close'].shift(-future_horizon)
-        x['7d_future_return'] = (x['future_close'] - x['close']) / x['close']
+        x['5d_future_return'] = (x['future_close'] - x['close']) / x['close']
         return x
 
     df = df.groupby('Symbol', group_keys=False).apply(compute_future_return_per_symbol)
 
 
     # Drop rows where target can't be computed
-    df.dropna(subset=['7d_future_return'], inplace=True)
+    df.dropna(subset=['5d_future_return'], inplace=True)
 
     # Define bins and labels
     bins = [-np.inf, -0.05, 0, 0.05, np.inf]
     labels = ['large_negative', 'small_negative', 'small_positive', 'large_positive']
 
-    df['return_class'] = pd.cut(df['7d_future_return'], bins=bins, labels=labels)
+    df['return_class'] = pd.cut(df['5d_future_return'], bins=bins, labels=labels)
     class_distribution = df['return_class'].value_counts()
     print("Class distribution:", class_distribution)
 
@@ -349,6 +353,7 @@ def pre_process(df, window_size=15):
                             np.where(x['close'] < x['close'].shift(1),
                                     -x['volume'], 0))
         lagged_features['OBV'] = lagged_features['OBV'].cumsum()
+        lagged_features['EMA_9'] = x['close'].ewm(9).mean().shift()
 
         # Daily returns & lagged returns
 
@@ -412,10 +417,12 @@ def DistributionSummary(dist):
 
 if __name__ == "__main__":
     params = {
+        'prod': False,
         'learning_rate': 0.01,
-        'window_size': 7,
-        'depth': 17,
-        'num_iter': 1500,
+        'window_size': 15,
+        'depth': 9,
+        'num_iter': 4,
+        'shuffle': True,
     }
     stonks = Stonks(params)
     stonks.load()

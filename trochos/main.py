@@ -4,9 +4,6 @@ import argparse
 import lib.stock_loader as stock_loader
 from wheel import Wheel
 
-PROD_STOCK_FILE = "stocks_prod.txt"
-TEST_STOCK_FILE = "stocks_test.txt"
-
 def main():
     """
     Parses user flags and launches the application.
@@ -22,7 +19,7 @@ def main():
     parser.add_argument("--strat", type=str, help="strategy to employ: CALL or PUT (--strike_spread turns this into a spread)", required=True)
     args = parser.parse_args()
 
-    tickers = stock_loader.parse_stock_tickers(PROD_STOCK_FILE if args.prod else TEST_STOCK_FILE)
+    tickers = stock_loader.parse_stock_tickers(args.prod)
 
     wheeler = Wheel(args, tickers)
     print(wheeler)

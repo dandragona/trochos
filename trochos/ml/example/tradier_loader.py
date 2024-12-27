@@ -22,7 +22,7 @@ def main():
     #------------------------------------------------------------
     symbol = "AAPL"
     end_date = datetime.today().date()
-    start_date = end_date - timedelta(days=2*365)  # approx 2 years of data
+    start_date = end_date - timedelta(days=months * 30)  # approx 2 years of data
 
     params = {
         'symbol': symbol,
